@@ -1,0 +1,27 @@
+language: c
+compiler:
+- gcc
+- clang
+
+before_install:
+  - sudo add-apt-repository "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty main restricted universe multiverse" -y
+  - sudo apt-get update -qq
+  - sudo apt-get install -y bison flex check libjansson-dev libxen-dev uuid-dev libfuse-dev
+
+script: "./autogen.sh; ./configure --enable-xen --enable-xen-events; make clean; make"
+
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "TDsEf7WoT79WWiRm/bmzunxDUiR6MrZUAjBeLm965fsu2GcVN+CkP8/kbt6UEiIwqBm3usRgkdzT/TTq5n8lDyYQ9cyQTNxvnnMLAILDrC8YJ6ql5/fvXRob/L+e1FeWPiqxaUWa8EqwrR4WEdyl8vvzRj0dui7JHvTnfQQSbjc="
+
+addons:
+  coverity_scan:
+    project:
+      name: "tklengyel/libvmi"
+      description: "Build submitted via Travis CI"
+    notification_email: tamas.k.lengyel@gmail.com
+    build_command_prepend: "./autogen.sh; ./configure --enable-xen --enable-xen-events; make clean"
+    build_command:   "make"
+    branch_pattern: staging
