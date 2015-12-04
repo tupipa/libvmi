@@ -183,19 +183,26 @@ void process_response ( event_response_t response, vmi_event_t* event, vm_event_
 
         for (;i<__VMI_EVENT_RESPONSE_MAX;i++)
         {
-            uint32_t bit = response & (1u << i);
+            bool bit_set = !!(response & (1u << i));
 
-            if ( bit && event_response_conversion[bit] != ~0 )
+            if ( bit_set && event_response_conversion[i] != ~0 )
             {
-                if ( i == VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID )
+                switch ( i )
+                {
+                case VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID:
                     rsp->altp2m_idx = event->vmm_pagetable_id;
-
-                rsp->flags |= event_response_conversion[bit];
-
-                switch (i) {
-                case VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP:
                     break;
-                }
+                case VMI_EVENT_RESPONSE_SET_EMUL_READ_DATA:
+                case VMI_EVENT_RESPONSE_SET_EMUL_INSN_DATA:
+                    rsp->flags |= event_response_conversion[VMI_EVENT_RESPONSE_EMULATE];
+                    rsp->data.emul_buffer.size = event->emul_buffer.size;
+                    memcpy(&rsp->data.emul_buffer.data, &event->emul_buffer.data, event->emul_buffer.size);
+                    break;
+                default:
+                    break;
+                };
+
+                rsp->flags |= event_response_conversion[i];
             }
         }
     }
@@ -236,7 +243,7 @@ status_t process_interrupt_event(vmi_instance_t vmi,
          *  ..but this basic structure should be adequate for now.
          */
 
-        event->callback(vmi, event);
+        process_response ( event->callback(vmi, event), event, rsp );
 
         if(-1 == event->interrupt_event.reinject) {
             errprint("%s Need to specify reinjection behaviour!\n", __FUNCTION__);
@@ -435,6 +442,10 @@ status_t process_mem(vmi_instance_t vmi,
         return VMI_FAILURE;
     }
 
+    rsp->u.mem_access = req->u.mem_access;
+
+    printf("Set mem_acces.flags %u\n", rsp->u.mem_access.flags);
+
     memevent_page_t * page = g_hash_table_lookup(vmi->mem_events, &req->u.mem_access.gfn);
     vmi_mem_access_t out_access = VMI_MEMACCESS_INVALID;
     if(req->u.mem_access.flags & MEM_ACCESS_R) out_access |= VMI_MEMACCESS_R;
@@ -503,7 +514,7 @@ status_t process_mem(vmi_instance_t vmi,
      *       the second violation on the other vCPU would not get delivered..
      */
 
-    errprint("Caught a memory event that had no handler registered in LibVMI @ GFN %"PRIu32" (0x%"PRIx64"), access: %u\n",
+    errprint("Caught a memory event that had no handler registered in LibVMI @ GFN %"PRIu64" (0x%"PRIx64"), access: %u\n",
         req->u.mem_access.gfn, (req->u.mem_access.gfn<<12) + req->u.mem_access.offset, out_access);
 
 errdone:
@@ -1089,6 +1100,7 @@ status_t xen_events_listen(vmi_instance_t vmi, uint32_t timeout)
         rsp.vcpu_id = req.vcpu_id;
         rsp.flags = req.flags;
         rsp.altp2m_idx = req.altp2m_idx;
+        rsp.reason = req.reason;
 
         /*
          * When we shut down we pull all pending requests from the ring

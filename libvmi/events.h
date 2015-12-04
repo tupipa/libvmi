@@ -154,6 +154,11 @@ typedef struct x86_regs {
 } x86_registers_t;
 
 typedef struct {
+    uint32_t size;
+    uint8_t data[sizeof(x86_registers_t) - sizeof(uint32_t)];
+} emul_buffer_t;
+
+typedef struct {
     /**
      * Register for which write event is configured.
      * Hypervisors offering register events tend to
@@ -311,6 +316,7 @@ typedef enum {
     VMI_EVENT_RESPONSE_EMULATE,
     VMI_EVENT_RESPONSE_EMULATE_NOWRITE,
     VMI_EVENT_RESPONSE_SET_EMUL_READ_DATA,
+    VMI_EVENT_RESPONSE_SET_EMUL_INSN_DATA,
     VMI_EVENT_RESPONSE_DENY,
     VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP,
     VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID,
@@ -376,10 +382,15 @@ struct vmi_event {
 
     /**
      * Snapshot of some VCPU registers when the event occurred
+     * or the data to send back for emulating a memory read
      */
     union {
-        x86_registers_t *x86;
-    } regs;
+        union {
+            x86_registers_t *x86;
+        } regs;
+
+        emul_buffer_t emul_buffer;
+    };
 };
 
 /**
