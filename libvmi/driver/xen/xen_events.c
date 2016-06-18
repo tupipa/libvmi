@@ -244,7 +244,7 @@ status_t process_interrupt_event(vmi_instance_t vmi,
         event->interrupt_event.gla = req->data.regs.x86.rip;
         event->interrupt_event.intr = intr;
         event->interrupt_event.reinject = -1;
-        event->regs.x86 = (x86_registers_t *)&req->data.regs.x86;
+        event->regs.x86 = (x86_registers_t *)&rsp->data.regs.x86;
         event->vcpu_id = req->vcpu_id;
 
         /* Will need to refactor if another interrupt is accessible
@@ -370,7 +370,7 @@ status_t process_register(vmi_instance_t vmi,
         }
 
         event->vcpu_id = req->vcpu_id;
-        event->regs.x86 = (x86_registers_t *)&req->data.regs.x86;
+        event->regs.x86 = (x86_registers_t *)&rsp->data.regs.x86;
 
         vmi->event_callback = 1;
         process_response ( event->callback(vmi, event), event, rsp );
@@ -472,7 +472,7 @@ status_t process_mem(vmi_instance_t vmi,
 
         if (page->event && (page->event->mem_event.in_access & out_access))
         {
-            page->event->regs.x86 = (x86_registers_t *)&req->data.regs.x86;
+            page->event->regs.x86 = (x86_registers_t *)&rsp->data.regs.x86;
             page->event->vmm_pagetable_id = req->altp2m_idx;
             vmi->event_callback = 1;
             process_response( issue_mem_cb(vmi, page->event, req, out_access), page->event, rsp );
@@ -488,7 +488,7 @@ status_t process_mem(vmi_instance_t vmi,
 
             if(byte_event && (byte_event->mem_event.in_access & out_access))
             {
-                byte_event->regs.x86 = (x86_registers_t *)&req->data.regs.x86;
+                byte_event->regs.x86 = (x86_registers_t *)&rsp->data.regs.x86;
                 byte_event->vmm_pagetable_id = req->altp2m_idx;
                 vmi->event_callback = 1;
                 process_response( issue_mem_cb(vmi, byte_event, req, out_access), byte_event, rsp );
@@ -561,7 +561,7 @@ status_t process_single_step_event(vmi_instance_t vmi,
         event->ss_event.gfn = req->u.singlestep.gfn;
         event->ss_event.offset = req->data.regs.x86.rip & VMI_BIT_MASK(0,11);
         event->ss_event.gla = req->data.regs.x86.rip;
-        event->regs.x86 = (x86_registers_t *)&req->data.regs.x86;
+        event->regs.x86 = (x86_registers_t *)&rsp->data.regs.x86;
         event->vcpu_id = req->vcpu_id;
 
         vmi->event_callback = 1;
@@ -1099,6 +1099,7 @@ status_t process_requests(vmi_instance_t vmi, vm_event_request_t *req,
         rsp->vcpu_id = req->vcpu_id;
         rsp->flags = (req->flags & VM_EVENT_FLAG_VCPU_PAUSED);
         rsp->reason = req->reason;
+        rsp->data = req->data;
 
         /*
          * When we shut down we pull all pending requests from the ring
