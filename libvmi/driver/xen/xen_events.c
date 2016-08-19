@@ -528,7 +528,7 @@ status_t process_guest_requested_event(vmi_instance_t vmi,
         errprint("%s error: invalid xc_interface handle\n", __FUNCTION__);
         return VMI_FAILURE;
     }
-    if ( dom == VMI_INVALID_DOMID )
+    if ( dom == (domid_t)VMI_INVALID_DOMID )
     {
         errprint("%s error: invalid domid\n", __FUNCTION__);
         return VMI_FAILURE;
@@ -562,7 +562,7 @@ status_t process_cpuid_event(vmi_instance_t vmi,
         errprint("%s error: invalid xc_interface handle\n", __FUNCTION__);
         return VMI_FAILURE;
     }
-    if ( dom == VMI_INVALID_DOMID )
+    if ( dom == (domid_t)VMI_INVALID_DOMID )
     {
         errprint("%s error: invalid domid\n", __FUNCTION__);
         return VMI_FAILURE;
@@ -602,7 +602,7 @@ status_t process_debug_event(vmi_instance_t vmi,
         errprint("%s error: invalid xc_interface handle\n", __FUNCTION__);
         return VMI_FAILURE;
     }
-    if ( dom == VMI_INVALID_DOMID )
+    if ( dom == (domid_t)VMI_INVALID_DOMID )
     {
         errprint("%s error: invalid domid\n", __FUNCTION__);
         return VMI_FAILURE;
@@ -909,6 +909,7 @@ status_t xen_set_reg_access(vmi_instance_t vmi, reg_event_t *event)
                 goto done;
 
             xe->vm_event.monitor_cr4_on = enable;
+            break;
         case XCR0:
             if ( enable == xe->vm_event.monitor_xcr0_on )
                 goto done;
