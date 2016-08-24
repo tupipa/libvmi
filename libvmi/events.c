@@ -286,7 +286,10 @@ static status_t register_mem_event_generic(vmi_instance_t vmi, vmi_event_t *even
         return VMI_FAILURE;
     }
 
-    g_hash_table_insert(vmi->mem_events_generic, g_memdup(&event->mem_event.in_access, sizeof(vmi_mem_access_t)), event);
+    gint *access = g_malloc0(sizeof(gint));
+    *access = event->mem_event.in_access;
+
+    g_hash_table_insert(vmi->mem_events_generic, access, event);
     return VMI_SUCCESS;
 }
 
@@ -676,6 +679,8 @@ status_t vmi_swap_events(vmi_instance_t vmi, vmi_event_t* swap_from, vmi_event_t
 
     dbprint(VMI_DEBUG_EVENTS, "Swapping events is only implemented for VMI_EVENT_MEMORY type!\n");
     return VMI_FAILURE;
+=======
+>>>>>>> 386de35... Add generic mem_access event types
 }
 
 status_t vmi_register_event(vmi_instance_t vmi, vmi_event_t* event)
