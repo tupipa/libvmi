@@ -186,12 +186,12 @@ void process_response ( event_response_t response, vmi_event_t* event, vm_event_
         {
             uint32_t bit_set = !!(response & (1u << i));
 
-            if ( bit_set && event_response_conversion[i] != ~0 )
+            if ( bit_set )
             {
                 switch ( i )
                 {
                 case VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID:
-                    rsp->altp2m_idx = event->vmm_pagetable_id;
+                    rsp->altp2m_idx = event->slat_id;
                     break;
                 case VMI_EVENT_RESPONSE_SET_EMUL_READ_DATA:
                     if ( event->emul_data ) {
@@ -436,7 +436,7 @@ status_t process_mem(vmi_instance_t vmi,
     if (event && (event->mem_event.in_access & out_access) )
     {
         event->regs.x86 = (x86_registers_t *)&req->data.regs.x86;
-        event->vmm_pagetable_id = (req->flags & VM_EVENT_FLAG_ALTERNATE_P2M) ? req->altp2m_idx : 0;
+        event->slat_id = (req->flags & VM_EVENT_FLAG_ALTERNATE_P2M) ? req->altp2m_idx : 0;
         vmi->event_callback = 1;
         process_response( issue_mem_cb(vmi, event, req, out_access), event, rsp );
         vmi->event_callback = 0;
@@ -941,45 +941,13 @@ status_t xen_set_mem_access(vmi_instance_t vmi, mem_access_event_t *event,
         errprint("%s error: invalid domid\n", __FUNCTION__);
         return VMI_FAILURE;
     }
-    if ( page_access_flag >= __VMI_MEMACCESS_MAX || page_access_flag <= VMI_MEMACCESS_INVALID ) {
-        errprint("%s error: invalid memaccess setting requested\n", __FUNCTION__);
+    if ( VMI_FAILURE == convert_vmi_flags_to_xenmem(page_access_flag, &access) )
         return VMI_FAILURE;
-    }
-
-    /*
-     * Setting a page write-only or write-execute in EPT triggers and EPT misconfiguration error
-     * which is unhandled by Xen (at least up to 4.3) and instantly crashes the domain on the first trigger.
-     *
-     * See Intel® 64 and IA-32 Architectures Software Developer’s Manual
-     * 8.2.3.1 EPT Misconfigurations
-     * AN EPT misconfiguration occurs if any of the following is identified while translating a guest-physical address:
-     * * The value of bits 2:0 of an EPT paging-structure entry is either 010b (write-only) or 110b (write/execute).
-     */
-    if(page_access_flag == VMI_MEMACCESS_R || page_access_flag == VMI_MEMACCESS_RX) {
-        errprint("%s error: can't set requested memory access, unsupported by EPT.\n", __FUNCTION__);
-        return VMI_FAILURE;
-    }
 
     addr_t page_key = event->physical_address >> 12;
 
     uint64_t npages = page_key + event->npages > xen->max_gpfn
         ? xen->max_gpfn - page_key: event->npages;
-
-    // Convert betwen vmi_mem_access_t and mem_access_t
-    // Xen does them backwards....
-    static const xenmem_access_t memaccess_conversion[] = {
-        [VMI_MEMACCESS_RWX] = XENMEM_access_n,
-        [VMI_MEMACCESS_WX] = XENMEM_access_r,
-        [VMI_MEMACCESS_RX] = XENMEM_access_w,
-        [VMI_MEMACCESS_X] = XENMEM_access_rw,
-        [VMI_MEMACCESS_W] = XENMEM_access_rx,
-        [VMI_MEMACCESS_R] = XENMEM_access_wx,
-        [VMI_MEMACCESS_N] = XENMEM_access_rwx,
-        [VMI_MEMACCESS_W2X] = XENMEM_access_rx2rw,
-        [VMI_MEMACCESS_RWX2N] = XENMEM_access_n2rwx,
-    };
-
-    access = memaccess_conversion[page_access_flag];
 
     dbprint(VMI_DEBUG_XEN, "--Setting memaccess for domain %"PRIu64" on physical address: %"PRIu64" npages: %"PRIu64"\n",
         dom, event->physical_address, npages);

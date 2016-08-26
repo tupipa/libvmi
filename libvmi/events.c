@@ -152,7 +152,10 @@ status_t register_interrupt_event(vmi_instance_t vmi, vmi_event_t *event)
     }
     else if (VMI_SUCCESS == driver_set_intr_access(vmi, &event->interrupt_event, 1))
     {
-        g_hash_table_insert(vmi->interrupt_events, &(event->interrupt_event.intr), event);
+        gint *intr = g_malloc0(sizeof(gint));
+        *intr = event->interrupt_event.intr;
+
+        g_hash_table_insert(vmi->interrupt_events, intr, event);
         dbprint(VMI_DEBUG_EVENTS, "Enabled event on interrupt: %d\n", event->interrupt_event.intr);
         rc = VMI_SUCCESS;
     }
@@ -172,7 +175,10 @@ status_t register_reg_event(vmi_instance_t vmi, vmi_event_t *event)
     }
     else if (VMI_SUCCESS == driver_set_reg_access(vmi, &event->reg_event))
     {
-        g_hash_table_insert(vmi->reg_events, &(event->reg_event.reg), event);
+        gint *reg = g_malloc0(sizeof(gint));
+        *reg = event->reg_event.reg;
+
+        g_hash_table_insert(vmi->reg_events, reg, event);
         dbprint(VMI_DEBUG_EVENTS, "Enabled register event on reg: %d\n", event->reg_event.reg);
         rc = VMI_SUCCESS;
     }
@@ -250,8 +256,7 @@ status_t register_mem_event(vmi_instance_t vmi, vmi_event_t *event)
 {
     addr_t page_key = event->mem_event.physical_address >> 12;
 
-    if (event->mem_event.in_access >= __VMI_MEMACCESS_MAX ||
-        event->mem_event.in_access == VMI_MEMACCESS_INVALID)
+    if ( VMI_MEMACCESS_INVALID == event->mem_event.in_access )
     {
         dbprint(VMI_DEBUG_EVENTS, "Invalid VMI_MEMACCESS requested: %d\n",
                 event->mem_event.in_access);
@@ -269,7 +274,7 @@ status_t register_mem_event(vmi_instance_t vmi, vmi_event_t *event)
 
     if (VMI_SUCCESS == driver_set_mem_access(vmi, &event->mem_event,
                                              event->mem_event.in_access,
-                                             event->vmm_pagetable_id))
+                                             event->slat_id))
     {
         g_hash_table_insert(vmi->mem_events, g_memdup(&page_key, sizeof(addr_t)), event);
         return VMI_SUCCESS;
@@ -408,7 +413,7 @@ status_t clear_mem_event(vmi_instance_t vmi, vmi_event_t *event)
 {
     addr_t page_key = event->mem_event.physical_address >> 12;
     status_t rc = driver_set_mem_access(vmi, &event->mem_event,
-                    VMI_MEMACCESS_N, event->vmm_pagetable_id);
+                    VMI_MEMACCESS_N, event->slat_id);
 
     dbprint(VMI_DEBUG_EVENTS, "Disabling memevent on page 0x%"PRIx32" in view %"PRIu32": %s\n",
             page_key, event->vmm_pagetable_id,
@@ -520,6 +525,22 @@ status_t vmi_register_event(vmi_instance_t vmi, vmi_event_t* event)
     if (!event)
     {
         dbprint(VMI_DEBUG_EVENTS, "No event given!\n");
+        return VMI_FAILURE;
+    }
+    if (event->version > VMI_EVENTS_VERSION)
+    {
+        dbprint(VMI_DEBUG_EVENTS, "The caller requires a newer version of LibVMI!\n");
+        return VMI_FAILURE;
+    }
+    if (event->version < VMI_EVENTS_VERSION)
+    {
+        /*
+         * Note: backwards-compatibility can be implemented by defining an internal
+         *  header for the older ABI and handling the calls according to the version
+         *  that was requested.
+         *  This is left as a TODO for when it becomes necessary.
+         */
+        dbprint(VMI_DEBUG_EVENTS, "The caller requires an older version of LibVMI!\n");
         return VMI_FAILURE;
     }
     if (!event->callback)
