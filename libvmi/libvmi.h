@@ -455,6 +455,17 @@ typedef enum translation_mechanism {
 } translation_mechanism_t;
 
 /**
+ * Supported architectures by LibVMI
+ */
+typedef enum arch {
+    VMI_ARCH_UNKNOWN,        /**< Unknown architecture */
+    VMI_ARCH_X86,            /**< x86 32-bit architecture */
+    VMI_ARCH_X86_64,         /**< x86 64-bit architecture */
+    VMI_ARCH_ARM32,          /**< ARM 32-bit architecture */
+    VMI_ARCH_ARM64           /**< ARM 64-bit architecture */
+} vmi_arch_t;
+
+/**
  * Structure to use as input to accessor functions
  * specifying how the access should be performed.
  */
@@ -608,6 +619,15 @@ page_mode_t vmi_init_paging(
  * @return VMI_SUCCESS or VMI_FAILURE
  */
 status_t vmi_destroy(
+    vmi_instance_t vmi);
+
+/**
+ * Obtain the library arch mode that was used for compiling.
+ *
+ * @param[in] vmi LibVMI instance
+ * @return The architecture of the library
+ */
+vmi_arch_t vmi_get_library_arch(
     vmi_instance_t vmi);
 
 /*---------------------------------------------------------

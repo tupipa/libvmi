@@ -87,13 +87,11 @@ void step_wrapper_free(gpointer value, gpointer data)
 
 void events_init(vmi_instance_t vmi)
 {
-    vmi->interrupt_events = g_hash_table_new(g_int_hash, g_int_equal);
-    vmi->mem_events = g_hash_table_new_full(g_int64_hash, g_int64_equal, free, NULL);
-    vmi->reg_events = g_hash_table_new(g_int_hash, g_int_equal);
-    vmi->ss_events = g_hash_table_new_full(g_int_hash, g_int_equal, g_free,
-            NULL);
-    vmi->clear_events = g_hash_table_new_full(g_int64_hash, g_int64_equal,
-            g_free, NULL);
+    vmi->interrupt_events = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, NULL);
+    vmi->mem_events = g_hash_table_new_full(g_int64_hash, g_int64_equal, g_free, NULL);
+    vmi->reg_events = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, NULL);
+    vmi->ss_events = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, NULL);
+    vmi->clear_events = g_hash_table_new_full(g_int64_hash, g_int64_equal, g_free, NULL);
 }
 
 void events_destroy(vmi_instance_t vmi)
@@ -776,3 +774,9 @@ status_t vmi_shutdown_single_step(vmi_instance_t vmi)
         return VMI_FAILURE;
     }
 }
+
+uint32_t vmi_events_version(vmi_instance_t vmi)
+{
+    return VMI_EVENTS_VERSION;
+}
+

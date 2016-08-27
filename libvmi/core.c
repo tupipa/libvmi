@@ -713,3 +713,20 @@ vmi_destroy(
     free(vmi);
     return VMI_SUCCESS;
 }
+
+vmi_arch_t
+vmi_get_library_arch(
+    vmi_instance_t vmi)
+{
+#ifdef I386
+    return VMI_ARCH_X86;
+#elif X86_64
+    return VMI_ARCH_X86_64;
+#elif ARM32
+    return VMI_ARCH_ARM32;
+#elif ARM64
+    return VMI_ARCH_ARM64;
+#endif
+
+    return VMI_ARCH_UNKNOWN;
+}
