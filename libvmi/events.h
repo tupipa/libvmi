@@ -410,18 +410,6 @@ typedef event_response_t (*event_callback_t)(vmi_instance_t vmi, vmi_event_t *ev
  */
 typedef void (*vmi_event_free_t)(vmi_event_t *event, status_t rc);
 
-/**
- * The event structure used during configuration of events and their delivery.
- *  "IN" members of the struct are set by the user during event
- *      registration to configure LibVMI and the hypervisor.
- *  "OUT" members are set by LibVMI upon observation of an event with
- *      contextual information helpful to the callback.
- *  "RESPONSE" members can be set by the user at the end of the callback to signal
- *      to the hypervisor that a specific type of action should be performed.
- *  Note that IN and RESPONSE fields can overlap with OUT fields thus the user
- *      should NOT rely these fields remaining unchanged after event registration.
- *      IN fields that remain unchanged by LibVMI are marked CONST IN.
- */
 struct vmi_event {
     union {
         /* IN */
