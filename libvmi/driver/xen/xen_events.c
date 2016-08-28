@@ -1143,6 +1143,9 @@ status_t xen_set_guest_requested_event(vmi_instance_t vmi, bool enabled) {
     if ( xen->major_version != 4 || xen->minor_version < 5 )
         return VMI_FAILURE;
 
+    if ( !vmi->guest_requested_event )
+        return VMI_SUCCESS;
+
     rc  = xen->libxcw.xc_monitor_guest_request(xen_get_xchandle(vmi),
                                                xen_get_domainid(vmi),
                                                enabled, 1);
@@ -1163,6 +1166,9 @@ status_t xen_set_debug_event(vmi_instance_t vmi, bool enabled) {
     if ( xen->major_version != 4 || xen->minor_version < 8 )
         return VMI_FAILURE;
 
+    if ( !vmi->debug_event )
+        return VMI_SUCCESS;
+
     rc = xen->libxcw.xc_monitor_debug_exceptions(xen_get_xchandle(vmi),
                                                  xen_get_domainid(vmi),
                                                  enabled, 1);
@@ -1182,6 +1188,9 @@ status_t xen_set_cpuid_event(vmi_instance_t vmi, bool enabled) {
 
     if ( xen->major_version != 4 || xen->minor_version < 8 )
         return VMI_FAILURE;
+
+    if ( !vmi->cpuid_event )
+        return VMI_SUCCESS;
 
     rc = xen->libxcw.xc_monitor_cpuid(xen_get_xchandle(vmi),
                                       xen_get_domainid(vmi),
