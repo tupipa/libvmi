@@ -228,8 +228,9 @@ status_t process_interrupt_event(vmi_instance_t vmi,
                                  vm_event_46_request_t *rsp)
 {
     int rc              = -1;
+    gint lookup         = intr;
     status_t status     = VMI_FAILURE;
-    vmi_event_t * event = g_hash_table_lookup(vmi->interrupt_events, &intr);
+    vmi_event_t * event = g_hash_table_lookup(vmi->interrupt_events, &lookup);
     xc_interface * xch  = xen_get_xchandle(vmi);
     domid_t domain_id   = xen_get_domainid(vmi);
 
@@ -353,7 +354,8 @@ status_t process_register(vmi_instance_t vmi,
                           vm_event_46_request_t *req,
                           vm_event_46_request_t *rsp)
 {
-    vmi_event_t * event = g_hash_table_lookup(vmi->reg_events, &reg);
+    gint lookup = reg;
+    vmi_event_t * event = g_hash_table_lookup(vmi->reg_events, &lookup);
 
     if ( event )
     {
@@ -463,7 +465,6 @@ status_t process_mem(vmi_instance_t vmi,
 
         if ( cb_issued )
             return VMI_SUCCESS;
-
     }
 
 errdone:
