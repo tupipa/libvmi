@@ -449,7 +449,6 @@ peparse_get_export_table(
 
     access_context_t _ctx = *ctx;
     addr_t export_header_rva = 0;
-    addr_t export_header_va = 0;
     size_t export_header_size = 0;
     size_t nbytes = 0;
 
@@ -534,13 +533,15 @@ windows_export_to_rva(
     }
 
     // find AddressOfNames index for export symbol
-    if ((aon_index = get_aon_index(vmi, symbol, &et, ctx)) == -1) {
+    aon_index = get_aon_index(vmi, symbol, &et, ctx);
+    if ( -1 == aon_index ) {
         dbprint(VMI_DEBUG_PEPARSE, "--PEParse: failed to get aon index\n");
         return VMI_FAILURE;
     }
 
     // find AddressOfFunctions index for export symbol
-    if ((aof_index = get_aof_index(vmi, aon_index, &et, ctx)) == -1) {
+    aof_index = get_aof_index(vmi, aon_index, &et, ctx);
+    if ( -1 == aof_index ) {
         dbprint(VMI_DEBUG_PEPARSE, "--PEParse: failed to get aof index\n");
         return VMI_FAILURE;
     }
@@ -573,9 +574,6 @@ windows_rva_to_export(
     struct export_table et;
     addr_t et_rva;
     size_t et_size;
-    int aon_index = -1;
-    int aof_index = -1;
-    char* symbol = NULL;
 
     // get export table structure
     if (peparse_get_export_table(vmi, ctx, &et, &et_rva, &et_size) != VMI_SUCCESS) {

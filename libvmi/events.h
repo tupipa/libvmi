@@ -531,7 +531,7 @@ struct vmi_event {
         do { \
             (_event)->version = VMI_EVENTS_VERSION; \
             (_event)->type = VMI_EVENT_MEMORY; \
-            (_event)->mem_event.physical_address = _generic ? ~0 :_addr; \
+            (_event)->mem_event.physical_address = _generic ? ~0ULL :_addr; \
             (_event)->mem_event.in_access = _access; \
             (_event)->mem_event.npages = 1; \
             (_event)->mem_event.generic = _generic; \
@@ -569,7 +569,7 @@ struct vmi_event {
  * @param[in] vmi LibVMI instance
  * @return max supported events version
  */
-uint32_t vmi_events_version(vmi_instance_t vmi);
+uint32_t vmi_events_version();
 
 /**
  * Register to handle the event specified by the vmi_event object.

@@ -69,7 +69,7 @@ static inline xen_events_t *xen_get_events(vmi_instance_t vmi)
 }
 
 static
-int wait_for_event_or_timeout(xc_interface *xch, xc_evtchn *xce, unsigned long ms)
+int wait_for_event_or_timeout(xc_evtchn *xce, unsigned long ms)
 {
     struct pollfd fd = { .fd = xc_evtchn_fd(xce), .events = POLLIN | POLLERR };
     int port;
@@ -887,7 +887,7 @@ status_t xen_set_reg_access_legacy(vmi_instance_t vmi, reg_event_t *event)
 
 status_t
 xen_set_mem_access_legacy(vmi_instance_t vmi, addr_t gpfn,
-                          vmi_mem_access_t page_access_flag, uint16_t vmm_pagetable_id)
+                          vmi_mem_access_t page_access_flag, uint16_t UNUSED(vmm_pagetable_id))
 {
     int rc;
     xc_interface * xch = xen_get_xchandle(vmi);
@@ -1015,7 +1015,6 @@ status_t xen_start_single_step_legacy(vmi_instance_t vmi, single_step_event_t *e
 
 status_t xen_stop_single_step_legacy(vmi_instance_t vmi, uint32_t vcpu)
 {
-    unsigned long dom = xen_get_domainid(vmi);
     status_t ret = VMI_FAILURE;
 
     dbprint(VMI_DEBUG_XEN, "--Removing MTF flag from vcpu %u\n", vcpu);
@@ -1118,7 +1117,7 @@ status_t xen_events_listen_42(vmi_instance_t vmi, uint32_t timeout)
 
     if(!vmi->shutting_down && timeout > 0) {
         dbprint(VMI_DEBUG_XEN, "--Waiting for xen events...(%"PRIu32" ms)\n", timeout);
-        rc = wait_for_event_or_timeout(xch, xe->mem_event.xce_handle, timeout);
+        rc = wait_for_event_or_timeout(xe->mem_event.xce_handle, timeout);
         if ( rc < -1 ) {
             errprint("Error while waiting for event.\n");
             return VMI_FAILURE;
@@ -1350,7 +1349,7 @@ status_t xen_events_listen_45(vmi_instance_t vmi, uint32_t timeout)
 
     if(!vmi->shutting_down && timeout > 0) {
         dbprint(VMI_DEBUG_XEN, "--Waiting for xen events...(%"PRIu32" ms)\n", timeout);
-        rc = wait_for_event_or_timeout(xch, xe->mem_event.xce_handle, timeout);
+        rc = wait_for_event_or_timeout(xe->mem_event.xce_handle, timeout);
         if ( rc < -1 ) {
             errprint("Error while waiting for event.\n");
             return VMI_FAILURE;

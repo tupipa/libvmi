@@ -271,7 +271,7 @@ event_response_t step_and_reg_events(vmi_instance_t vmi, vmi_event_t *singlestep
 
 static status_t register_mem_event_generic(vmi_instance_t vmi, vmi_event_t *event)
 {
-    if ( event->mem_event.physical_address != ~0 )
+    if ( event->mem_event.physical_address != ~0ULL )
     {
         dbprint(VMI_DEBUG_EVENTS, "Physical address must be ~0 for generic mem event types.\n");
         return VMI_FAILURE;
@@ -521,7 +521,7 @@ status_t clear_singlestep_event(vmi_instance_t vmi, vmi_event_t *event)
     return rc;
 }
 
-status_t clear_guest_requested_event(vmi_instance_t vmi, vmi_event_t *event)
+status_t clear_guest_requested_event(vmi_instance_t vmi, vmi_event_t* UNUSED(event))
 {
     status_t rc = VMI_FAILURE;
 
@@ -535,7 +535,7 @@ status_t clear_guest_requested_event(vmi_instance_t vmi, vmi_event_t *event)
     return rc;
 }
 
-status_t clear_cpuid_event(vmi_instance_t vmi, vmi_event_t *event)
+status_t clear_cpuid_event(vmi_instance_t vmi, vmi_event_t* UNUSED(event))
 {
     status_t rc = VMI_FAILURE;
 
@@ -549,7 +549,7 @@ status_t clear_cpuid_event(vmi_instance_t vmi, vmi_event_t *event)
     return rc;
 }
 
-status_t clear_debug_event(vmi_instance_t vmi, vmi_event_t *event)
+status_t clear_debug_event(vmi_instance_t vmi, vmi_event_t* UNUSED(event))
 {
     status_t rc = VMI_FAILURE;
 
@@ -881,7 +881,7 @@ status_t vmi_shutdown_single_step(vmi_instance_t vmi)
     }
 }
 
-uint32_t vmi_events_version(vmi_instance_t vmi)
+uint32_t vmi_events_version()
 {
     return VMI_EVENTS_VERSION;
 }

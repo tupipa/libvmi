@@ -67,9 +67,7 @@ xen_events_t *xen_get_events(vmi_instance_t vmi)
 }
 
 static
-int wait_for_event_or_timeout(xc_interface *xch,
-                              xc_evtchn *xce,
-                              unsigned long ms)
+int wait_for_event_or_timeout(xc_evtchn *xce, unsigned long ms)
 {
     struct pollfd fd = {
             .fd = xc_evtchn_fd(xce),
@@ -380,6 +378,8 @@ status_t process_register(vmi_instance_t vmi,
                 event->reg_event.value = req->u.write_ctrlreg.new_value;
                 event->reg_event.previous = req->u.write_ctrlreg.old_value;
                 break;
+            default:
+                break;
         }
 
         event->vcpu_id = req->vcpu_id;
@@ -467,14 +467,13 @@ status_t process_mem(vmi_instance_t vmi,
             return VMI_SUCCESS;
     }
 
-errdone:
     /*
      * TODO: Could this happen when using multi-vCPU VMs where multiple vCPU's trigger
      *       the same violation and the event is already being passed to vmi_step_event?
      *       The event in that case would be already removed from the GHashTable so
      *       the second violation on the other vCPU would not get delivered..
      */
-    errprint("Caught a memory event that had no handler registered in LibVMI @ GFN 0x%"PRIx32" (0x%"PRIx64"), access: %u\n",
+    errprint("Caught a memory event that had no handler registered in LibVMI @ GFN 0x%" PRIx64 " (0x%" PRIx64 "), access: %u\n",
              req->u.mem_access.gfn, (req->u.mem_access.gfn<<12) + req->u.mem_access.offset, out_access);
     return VMI_FAILURE;
 }
@@ -661,7 +660,6 @@ status_t process_debug_event(vmi_instance_t vmi,
 void xen_events_destroy_new(vmi_instance_t vmi)
 {
     int rc, resume = 0;
-    status_t rc2;
     xc_interface * xch = xen_get_xchandle(vmi);
     xen_instance_t *xen = xen_get_instance(vmi);
     xen_events_t * xe = xen_get_events(vmi);
@@ -698,9 +696,9 @@ void xen_events_destroy_new(vmi_instance_t vmi)
     rc = xen->libxcw.xc_monitor_write_ctrlreg(xch, dom, VM_EVENT_X86_CR4, false, false, false);
     rc = xen->libxcw.xc_monitor_write_ctrlreg(xch, dom, VM_EVENT_X86_XCR0, false, false, false);
     rc = xen->libxcw.xc_monitor_software_breakpoint(xch, dom, false);
-    rc2 = xen_set_guest_requested_event(vmi, 0);
-    rc2 = xen_set_cpuid_event(vmi, 0);
-    rc2 = xen_set_debug_event(vmi, 0);
+    xen_set_guest_requested_event(vmi, 0);
+    xen_set_cpuid_event(vmi, 0);
+    xen_set_debug_event(vmi, 0);
 
     if ( xe->vm_event.ring_page ) {
         xen_events_listen(vmi, 0);
@@ -732,10 +730,7 @@ status_t xen_init_events_new(vmi_instance_t vmi)
     xen_events_t * xe = NULL;
     xen_instance_t *xen = xen_get_instance(vmi);
     xc_interface * xch = xen_get_xchandle(vmi);
-    xc_domaininfo_t dom_info = {0};
     domid_t dom = xen_get_domainid(vmi);
-    unsigned long ring_pfn = 0;
-    unsigned long mmap_pfn = 0;
     int rc;
 
     if ( !xch ) {
@@ -862,6 +857,9 @@ status_t xen_set_reg_access(vmi_instance_t vmi, reg_event_t *event)
                 goto done;
             }
             break;
+        default:
+            errprint("%s error: no system support for event type\n", __FUNCTION__);
+            goto done;
     }
 
     switch ( event->in_access )
@@ -1099,7 +1097,6 @@ status_t xen_start_single_step(vmi_instance_t vmi, single_step_event_t *event)
 
 status_t xen_stop_single_step(vmi_instance_t vmi, uint32_t vcpu)
 {
-    domid_t dom = xen_get_domainid(vmi);
     status_t ret = VMI_FAILURE;
 
     dbprint(VMI_DEBUG_XEN, "--Removing MTF flag from vcpu %u\n", vcpu);
@@ -1367,7 +1364,7 @@ status_t xen_events_listen(vmi_instance_t vmi, uint32_t timeout)
 
     if(!vmi->shutting_down && timeout > 0) {
         dbprint(VMI_DEBUG_XEN, "--Waiting for xen events...(%"PRIu32" ms)\n", timeout);
-        rc = wait_for_event_or_timeout(xch, xe->vm_event.xce_handle, timeout);
+        rc = wait_for_event_or_timeout(xe->vm_event.xce_handle, timeout);
         if ( rc < -1 ) {
             errprint("Error while waiting for event.\n");
             return VMI_FAILURE;

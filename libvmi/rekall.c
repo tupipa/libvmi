@@ -32,7 +32,6 @@ rekall_profile_symbol_to_rva(
     addr_t *rva)
 {
     status_t ret = VMI_FAILURE;
-    addr_t mask = 0;
     if(!rekall_profile || !symbol) {
         return ret;
     }
