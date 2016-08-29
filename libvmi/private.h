@@ -243,6 +243,18 @@ addr_t canonical_addr(addr_t va) {
     vmi_instance_t vmi,
     addr_t addr);
 
+#ifdef __GNUC__
+#  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
+#else
+#  define UNUSED(x) UNUSED_ ## x
+#endif
+
+#ifdef __GNUC__
+#  define UNUSED_FUNCTION(x) __attribute__((__unused__)) UNUSED_ ## x
+#else
+#  define UNUSED_FUNCTION(x) UNUSED_ ## x
+#endif
+
 /*-------------------------------------
  * accessors.c
  */
@@ -322,6 +334,8 @@ status_t vmi_pagetable_lookup_cache(
         addr_t base_addr,
         addr_t dtb,
         addr_t rva);
+    void rva_cache_flush(
+        vmi_instance_t vmi);
 
     void v2p_cache_init(
     vmi_instance_t vmi);

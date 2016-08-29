@@ -276,7 +276,6 @@ set_image_type_for_file(
 static status_t
 set_id_and_name(
     vmi_instance_t vmi,
-    vmi_mode_t mode,
     uint64_t id,
     const char *name)
 {
@@ -412,7 +411,7 @@ vmi_init_private(
     dbprint(VMI_DEBUG_CORE, "--completed driver init.\n");
 
     /* resolve the id and name */
-    if (VMI_FAILURE == set_id_and_name(*vmi, access_mode, id, name)) {
+    if (VMI_FAILURE == set_id_and_name(*vmi, id, name)) {
         goto error_exit;
     }
 
@@ -715,8 +714,7 @@ vmi_destroy(
 }
 
 vmi_arch_t
-vmi_get_library_arch(
-    vmi_instance_t vmi)
+vmi_get_library_arch()
 {
 #ifdef I386
     return VMI_ARCH_X86;

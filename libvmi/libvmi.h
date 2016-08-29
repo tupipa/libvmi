@@ -627,8 +627,7 @@ status_t vmi_destroy(
  * @param[in] vmi LibVMI instance
  * @return The architecture of the library
  */
-vmi_arch_t vmi_get_library_arch(
-    vmi_instance_t vmi);
+vmi_arch_t vmi_get_library_arch();
 
 /*---------------------------------------------------------
  * Memory translation functions from memory.c
