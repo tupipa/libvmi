@@ -1383,7 +1383,7 @@ status_t xen_events_listen(vmi_instance_t vmi, uint32_t timeout)
      * and process all reamining events on the ring. Once no more requests
      * are on the ring we can remove the events.
      */
-    if ( g_hash_table_size(vmi->clear_events) ) {
+    if ( vmi->clear_events && g_hash_table_size(vmi->clear_events) ) {
         vmi_pause_vm(vmi); // Pause all vCPUs
         vrc = process_requests(vmi, &req, &rsp);
 
@@ -1396,8 +1396,7 @@ status_t xen_events_listen(vmi_instance_t vmi, uint32_t timeout)
         }
 
         g_hash_table_destroy(vmi->clear_events);
-        vmi->clear_events =
-            g_hash_table_new_full(g_int64_hash, g_int64_equal, free, NULL);
+        vmi->clear_events = g_hash_table_new_full(g_int64_hash, g_int64_equal, free, NULL);
 
         vmi_resume_vm(vmi);
     }

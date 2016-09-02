@@ -59,9 +59,6 @@ rekall_profile_symbol_to_rva(
         *rva = json_object_get_int64(jsymbol);
 
         ret = VMI_SUCCESS;
-
-        json_object_put(jsymbol);
-        json_object_put(constants);
     } else {
         json_object *structs = NULL, *jstruct = NULL, *jstruct2 = NULL, *jmember = NULL, *jvalue = NULL;
         if (!json_object_object_get_ex(root, "$STRUCTS", &structs)) {
@@ -70,43 +67,28 @@ rekall_profile_symbol_to_rva(
         }
         if (!json_object_object_get_ex(structs, symbol, &jstruct)) {
             dbprint(VMI_DEBUG_MISC, "Rekall profile: no %s found\n", symbol);
-            json_object_put(structs);
             goto exit;
         }
 
         jstruct2 = json_object_array_get_idx(jstruct, 1);
         if (!jstruct2) {
             dbprint(VMI_DEBUG_MISC, "Rekall profile: struct %s has no second element\n", symbol);
-            json_object_put(jstruct);
-            json_object_put(structs);
             goto exit;
         }
 
         if (!json_object_object_get_ex(jstruct2, subsymbol, &jmember)) {
             dbprint(VMI_DEBUG_MISC, "Rekall profile: %s has no %s member\n", symbol, subsymbol);
-            json_object_put(jstruct2);
-            json_object_put(jstruct);
-            json_object_put(structs);
             goto exit;
         }
 
         jvalue = json_object_array_get_idx(jmember, 0);
         if (!jvalue) {
             dbprint(VMI_DEBUG_MISC, "Rekall profile: %s.%s has no RVA defined\n", symbol, subsymbol);
-            json_object_put(jmember);
-            json_object_put(jstruct2);
-            json_object_put(jstruct);
-            json_object_put(structs);
             goto exit;
         }
 
         *rva = json_object_get_int64(jvalue);
         ret = VMI_SUCCESS;
-
-        json_object_put(jmember);
-        json_object_put(jstruct2);
-        json_object_put(jstruct);
-        json_object_put(structs);
     }
 
 exit:
