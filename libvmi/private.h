@@ -430,6 +430,11 @@ status_t vmi_pagetable_lookup_cache(
         gpointer key,
         gpointer value,
         gpointer data);
+    gboolean clear_events(
+        gpointer key,
+        gpointer value,
+        gpointer data);
+
     #define ghashtable_foreach(table, iter, key, val) \
         g_hash_table_iter_init(&iter, table); \
         while(g_hash_table_iter_next(&iter,(void**)key,(void**)val))

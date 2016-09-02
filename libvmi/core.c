@@ -529,6 +529,9 @@ vmi_init_private(
     }
 
 error_exit:
+    if ( VMI_FAILURE == status )
+        vmi_destroy(*vmi);
+
     return status;
 }
 

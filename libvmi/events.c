@@ -56,11 +56,22 @@ vmi_mem_access_t combine_mem_access(vmi_mem_access_t base, vmi_mem_access_t add)
 //----------------------------------------------------------------------------
 //  General event callback management.
 
-gboolean event_entry_free(gpointer UNUSED(key), gpointer value, gpointer data)
+gboolean event_entry_free(gpointer key, gpointer value, gpointer data)
 {
     vmi_instance_t vmi = (vmi_instance_t) data;
     vmi_event_t *event = (vmi_event_t*) value;
     vmi_clear_event(vmi, event, NULL);
+    g_free(key);
+    return TRUE;
+}
+
+gboolean clear_events(gpointer key, gpointer value, gpointer data)
+{
+    vmi_event_t *event = *(vmi_event_t**) key;
+    vmi_event_free_t free_event = (vmi_event_free_t) value;
+    vmi_instance_t vmi = (vmi_instance_t)data;
+    vmi_clear_event(vmi, event, free_event);
+    g_free(key);
     return TRUE;
 }
 
@@ -93,12 +104,12 @@ void step_event_free(vmi_event_t *event, status_t rc)
 
 void events_init(vmi_instance_t vmi)
 {
-    vmi->interrupt_events = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, NULL);
-    vmi->mem_events_on_gfn = g_hash_table_new_full(g_int64_hash, g_int64_equal, g_free, NULL);
-    vmi->mem_events_generic = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, NULL);
-    vmi->reg_events = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, NULL);
-    vmi->ss_events = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, NULL);
-    vmi->clear_events = g_hash_table_new_full(g_int64_hash, g_int64_equal, g_free, NULL);
+    vmi->interrupt_events = g_hash_table_new(g_int_hash, g_int_equal);
+    vmi->mem_events_on_gfn = g_hash_table_new(g_int64_hash, g_int64_equal);
+    vmi->mem_events_generic = g_hash_table_new(g_int_hash, g_int_equal);
+    vmi->reg_events = g_hash_table_new(g_int_hash, g_int_equal);
+    vmi->ss_events = g_hash_table_new(g_int_hash, g_int_equal);
+    vmi->clear_events = g_hash_table_new(g_int64_hash, g_int64_equal);
 }
 
 void events_destroy(vmi_instance_t vmi)
@@ -113,6 +124,7 @@ void events_destroy(vmi_instance_t vmi)
         dbprint(VMI_DEBUG_EVENTS, "Destroying memaccess on gfn events\n");
         g_hash_table_foreach_remove(vmi->mem_events_on_gfn, event_entry_free, vmi);
         g_hash_table_destroy(vmi->mem_events_on_gfn);
+        vmi->mem_events_on_gfn = NULL;
     }
 
     if (vmi->mem_events_generic)
@@ -120,6 +132,7 @@ void events_destroy(vmi_instance_t vmi)
         dbprint(VMI_DEBUG_EVENTS, "Destroying memaccess generic events\n");
         g_hash_table_foreach_remove(vmi->mem_events_generic, event_entry_free, vmi);
         g_hash_table_destroy(vmi->mem_events_generic);
+        vmi->mem_events_generic = NULL;
     }
 
     if (vmi->reg_events)
@@ -127,12 +140,14 @@ void events_destroy(vmi_instance_t vmi)
         dbprint(VMI_DEBUG_EVENTS, "Destroying register events\n");
         g_hash_table_foreach_steal(vmi->reg_events, event_entry_free, vmi);
         g_hash_table_destroy(vmi->reg_events);
+        vmi->reg_events = NULL;
     }
 
     if (vmi->step_events)
     {
         g_slist_foreach(vmi->step_events, step_wrapper_free, vmi);
         g_slist_free(vmi->step_events);
+        vmi->step_events = NULL;
     }
 
     if (vmi->ss_events)
@@ -140,6 +155,7 @@ void events_destroy(vmi_instance_t vmi)
         dbprint(VMI_DEBUG_EVENTS, "Destroying singlestep events\n");
         g_hash_table_foreach_remove(vmi->ss_events, event_entry_free, vmi);
         g_hash_table_destroy(vmi->ss_events);
+        vmi->ss_events = NULL;
     }
 
     if (vmi->interrupt_events)
@@ -147,9 +163,15 @@ void events_destroy(vmi_instance_t vmi)
         dbprint(VMI_DEBUG_EVENTS, "Destroying interrupt events\n");
         g_hash_table_foreach_steal(vmi->interrupt_events, event_entry_free, vmi);
         g_hash_table_destroy(vmi->interrupt_events);
+        vmi->interrupt_events = NULL;
     }
 
-    g_hash_table_destroy(vmi->clear_events);
+    if ( vmi->clear_events )
+    {
+        g_hash_table_foreach_steal(vmi->clear_events, clear_events, vmi);
+        g_hash_table_destroy(vmi->clear_events);
+        vmi->clear_events = NULL;
+    }
 }
 
 status_t register_interrupt_event(vmi_instance_t vmi, vmi_event_t *event)
