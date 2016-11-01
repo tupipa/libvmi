@@ -298,6 +298,7 @@ status_t process_interrupt_event(vmi_instance_t vmi,
         event->interrupt_event.insn_length = req->u.software_breakpoint.insn_length;
 
         event->x86_regs = (x86_registers_t *)&req->data.regs.x86;
+        event->slat_id = (req->flags & VM_EVENT_FLAG_ALTERNATE_P2M) ? req->altp2m_idx : 0;
         event->vcpu_id = req->vcpu_id;
 
         /* Will need to refactor if another interrupt is accessible
@@ -426,6 +427,7 @@ status_t process_register(vmi_instance_t vmi,
                 break;
         }
 
+        event->slat_id = (req->flags & VM_EVENT_FLAG_ALTERNATE_P2M) ? req->altp2m_idx : 0;
         event->vcpu_id = req->vcpu_id;
         event->x86_regs = (x86_registers_t *)&req->data.regs.x86;
 
@@ -549,6 +551,7 @@ status_t process_single_step_event(vmi_instance_t vmi,
         event->ss_event.offset = req->data.regs.x86.rip & VMI_BIT_MASK(0,11);
         event->ss_event.gla = req->data.regs.x86.rip;
         event->x86_regs = (x86_registers_t *)&req->data.regs.x86;
+        event->slat_id = (req->flags & VM_EVENT_FLAG_ALTERNATE_P2M) ? req->altp2m_idx : 0;
         event->vcpu_id = req->vcpu_id;
 
         vmi->event_callback = 1;
@@ -586,6 +589,7 @@ static status_t process_guest_requested_event(vmi_instance_t vmi,
     }
 
     vmi->guest_requested_event->x86_regs = (x86_registers_t *)&req->data.regs.x86;
+    vmi->guest_requested_event->slat_id = (req->flags & VM_EVENT_FLAG_ALTERNATE_P2M) ? req->altp2m_idx : 0;
     vmi->guest_requested_event->vcpu_id = req->vcpu_id;
 
     vmi->event_callback = 1;
@@ -620,6 +624,7 @@ status_t process_cpuid_event(vmi_instance_t vmi,
     }
 
     vmi->cpuid_event->x86_regs = (x86_registers_t *)&req->data.regs.x86;
+    vmi->cpuid_event->slat_id = (req->flags & VM_EVENT_FLAG_ALTERNATE_P2M) ? req->altp2m_idx : 0;
     vmi->cpuid_event->vcpu_id = req->vcpu_id;
     vmi->cpuid_event->cpuid_event.insn_length = req->u.cpuid.insn_length;
     vmi->cpuid_event->cpuid_event.leaf = req->u.cpuid.leaf;
@@ -662,6 +667,7 @@ status_t process_debug_event(vmi_instance_t vmi,
     }
 
     vmi->debug_event->x86_regs = (x86_registers_t *)&req->data.regs.x86;
+    vmi->debug_event->slat_id = (req->flags & VM_EVENT_FLAG_ALTERNATE_P2M) ? req->altp2m_idx : 0;
     vmi->debug_event->vcpu_id = req->vcpu_id;
     vmi->debug_event->debug_event.reinject = -1;
     vmi->debug_event->debug_event.gla = req->data.regs.x86.rip;
