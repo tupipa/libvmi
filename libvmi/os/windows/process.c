@@ -288,6 +288,7 @@ eprocess_list_search(
     int tasks_offset = 0;
     void *buf = alloca(len);
     addr_t rtnval = 0;
+    int limit = 1000;
 
     tasks_offset = vmi_get_offset(vmi, "win_tasks");
 
@@ -299,7 +300,7 @@ eprocess_list_search(
     }
     list_head = next_process;
 
-    while(1) {
+    while(limit-- > 0) {
         addr_t tmp_next = 0;
         vmi_read_addr_va(vmi, next_process, 0, &tmp_next);
         if (list_head == tmp_next) {
