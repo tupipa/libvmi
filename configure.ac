@@ -171,11 +171,7 @@ AM_PROG_LIBTOOL
 AM_SANITY_CHECK
 
 PKG_CHECK_MODULES([CHECK], [check >= 0.9.4], [have_check="yes"], [have_check="no"])
-PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.16],
-                  [AC_DEFINE([GLIB_VERSION],
-                    [m4_esyscmd_s([pkg-config --modversion glib-2.0 | tr -d . | cut -c1-3])],
-                    [GLib version])],
-                  [AC_MSG_ERROR(GLib 2.16 or newer not found. Install missing package and re-run)])
+PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.16],[],[AC_MSG_ERROR(GLib 2.16 or newer not found. Install missing package and re-run)])
 AC_SUBST([GLIB_CFLAGS])
 AC_SUBST([GLIB_LIBS])
 
@@ -187,6 +183,9 @@ AC_SUBST([GLIB_LIBS])
 
 [if test "$enable_xen" = "yes"]
 [then]
+    AC_CHECK_HEADERS([xenctrl.h xen/io/ring.h], [],
+        [AC_MSG_ERROR([Required Xen headers not found. Install missing package or re-run with --disable-xen])])
+
     AC_CHECK_TYPE(
         [hvmmem_access_t],
         [AC_DEFINE([HAVE_HVMMEM_ACCESS_T], [1], [xen headers define hvmmem_access_t])],
@@ -203,9 +202,7 @@ AC_SUBST([GLIB_LIBS])
 
     [if test "$with_xenstore" = "yes"]
     [then]
-        AC_CHECK_HEADERS([xenstore.h])
-        AC_CHECK_HEADERS([xs.h])
-
+        AC_CHECK_HEADERS([xenstore.h xs.h])
         AC_DEFINE([HAVE_LIBXENSTORE], [1], [Define to 1 to enable Xenstore support.])
     [fi]
 [fi]
@@ -217,6 +214,10 @@ AC_SUBST([GLIB_LIBS])
     AC_CHECK_HEADER(libvirt/libvirt.h, [],
         [AC_MSG_ERROR([No libvirt headers found. Install missing package or re-run with --disable-kvm])])
     AC_DEFINE([ENABLE_KVM], [1], [Define to 1 to enable KVM support.])
+    AC_CHECK_HEADER([qemu/libvmi_request.h],
+        [AC_DEFINE([HAVE_LIBVMI_REQUEST], 1,
+           [Define to 1 if you have <qemu/libvmi_request.h>.])],
+        [])
 [fi]
 
 [if test "$enable_shm_snapshot" = "yes"]
