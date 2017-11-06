@@ -149,3 +149,40 @@ matrix:
         - scan-build-5.0 --status-bugs --use-cc=clang-5.0 ./configure --enable-debug
         - cd libvmi/config && make && cd ../..
         - scan-build-5.0 --status-bugs --use-cc=clang-5.0 make
+
+#
+# valgrind
+#
+    - env:
+        - TEST="valgrind"
+      cache: memory_images
+      addons:
+        apt:
+            sources:
+                - ubuntu-toolchain-r-test
+            packages:
+                - valgrind
+                - bison
+                - flex
+                - check
+                - libjson-c-dev
+                - autoconf-archive
+                - libvirt-dev
+                - libxen-dev
+                - libfuse-dev
+      before_install:
+        - mkdir memory_images && wget https://www.cfreds.nist.gov/mem/memory-images.rar && unrar -y e memory-images.rar && rm memory-images.rar && cd .. || :
+      install:
+        - ./autogen.sh
+        - ./configure --enable-debug && make
+        - |
+          printf "xp-laptop-2005-06-25.img { \n\
+            ostype = \"Windows\"; \n\
+            win_tasks   = 0x88; \n\
+            win_pdbase  = 0x18; \n\
+            win_pid     = 0x84; \n\
+            win_sysproc = 0x23c87c0; \n\
+            win_kdvb    = 0x8054c060; \n\
+            }" >> ~/libvmi.conf
+      script:
+        - valgrind ./examples/process-list ./memory-images/xp-laptop-2005-06-25.img
