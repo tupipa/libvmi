@@ -151,6 +151,8 @@ struct vmi_instance {
     addr_t last_used_page_key; /**< the key (addr) of the last used page */
 #endif
 
+    GRWLock lock; /**< lock for thread safety */
+
     unsigned int num_vcpus; /**< number of VCPUs used by this instance */
 
     vmi_event_t *guest_requested_event; /**< Handler of guest-requested events */

@@ -33,7 +33,13 @@
 uint8_t vmi_get_address_width(
     vmi_instance_t vmi)
 {
-    switch (vmi->page_mode) {
+    page_mode_t pm;
+
+    g_rw_lock_reader_lock(&vmi->lock);
+    pm = vmi->page_mode;
+    g_rw_lock_reader_unlock(&vmi->lock);
+
+    switch (pm) {
         case VMI_PM_AARCH64:
         case VMI_PM_IA32E:
             return 8;
@@ -50,7 +56,13 @@ os_t
 vmi_get_ostype(
     vmi_instance_t vmi)
 {
-    return vmi->os_type;
+    os_t os;
+
+    g_rw_lock_reader_lock(&vmi->lock);
+    os = vmi->os_type;
+    g_rw_lock_reader_unlock(&vmi->lock);
+
+    return os;
 }
 
 win_ver_t
@@ -61,22 +73,25 @@ vmi_get_winver(
     errprint("**LibVMI wasn't compiled with Windows support!\n");
     return VMI_OS_WINDOWS_NONE;
 #else
-    windows_instance_t windows_instance = NULL;
+    win_ver_t ver;
+
+    g_rw_lock_reader_lock(&vmi->lock);
 
     if (VMI_OS_WINDOWS != vmi->os_type)
-        return VMI_OS_WINDOWS_NONE;
+        ver = VMI_OS_WINDOWS_NONE;
+    else if (!vmi->os_data)
+        ver = VMI_OS_WINDOWS_NONE;
+    else {
+        windows_instance_t windows_instance = vmi->os_data;
 
-    if (!vmi->os_data) {
-        return VMI_OS_WINDOWS_NONE;
+        if (!windows_instance->version || windows_instance->version == VMI_OS_WINDOWS_UNKNOWN) {
+            addr_t kdbg = windows_instance->ntoskrnl + windows_instance->kdbg_offset;
+            ver = windows_instance->version = find_windows_version(vmi, kdbg);
+        }
     }
 
-    windows_instance = vmi->os_data;
-
-    if (!windows_instance->version || windows_instance->version == VMI_OS_WINDOWS_UNKNOWN) {
-        addr_t kdbg = windows_instance->ntoskrnl + windows_instance->kdbg_offset;
-        windows_instance->version = find_windows_version(vmi, kdbg);
-    }
-    return windows_instance->version;
+    g_rw_lock_reader_unlock(&vmi->lock);
+    return ver;
 #endif
 }
 
@@ -114,7 +129,13 @@ vmi_get_winver_manual(
     addr_t kdbg_pa)
 {
 #ifdef ENABLE_WINDOWS
-    return find_windows_version(vmi, kdbg_pa);
+    win_ver_t ver;
+
+    g_rw_lock_reader_lock(&vmi->lock);
+    ver = find_windows_version(vmi, kdbg_pa);
+    g_rw_lock_reader_unlock(&vmi->lock);
+
+    return ver;
 #else
     errprint("**LibVMI wasn't compiled with Windows support!\n");
     return VMI_OS_WINDOWS_NONE;
@@ -127,10 +148,16 @@ vmi_get_offset(
     const char *offset_name,
     addr_t *offset)
 {
-    if ( !vmi->os_interface || !vmi->os_interface->os_get_offset )
-        return VMI_FAILURE;
+    status_t ret;
 
-    return vmi->os_interface->os_get_offset(vmi, offset_name, offset);
+    g_rw_lock_reader_lock(&vmi->lock);
+
+    if ( !vmi->os_interface || !vmi->os_interface->os_get_offset )
+        ret = VMI_FAILURE;
+    else
+        ret = vmi->os_interface->os_get_offset(vmi, offset_name, offset);
+
+    g_rw_lock_reader_unlock(&vmi->lock);
 }
 
 status_t
@@ -147,27 +174,49 @@ uint64_t
 vmi_get_memsize(
     vmi_instance_t vmi)
 {
-    if ( VMI_FAILURE == driver_get_memsize(vmi, &vmi->allocated_ram_size, &vmi->max_physical_address) )
-        return 0;
+    uint64_t memsize;
 
-    return vmi->allocated_ram_size;
+    g_rw_lock_reader_lock(&vmi->lock);
+
+    if ( VMI_FAILURE == driver_get_memsize(vmi, &vmi->allocated_ram_size, &vmi->max_physical_address) )
+        memsize = 0;
+    else
+        memsize = vmi->allocated_ram_size;
+
+    g_rw_lock_reader_unlock(&vmi->lock);
+
+    return memsize;
 }
 
 addr_t
 vmi_get_max_physical_address(
     vmi_instance_t vmi)
 {
-    if ( VMI_FAILURE == driver_get_memsize(vmi, &vmi->allocated_ram_size, &vmi->max_physical_address) )
-        return 0;
+    addr_t max;
 
-    return vmi->max_physical_address;
+    g_rw_lock_reader_lock(&vmi->lock);
+
+    if ( VMI_FAILURE == driver_get_memsize(vmi, &vmi->allocated_ram_size, &vmi->max_physical_address) )
+        max = 0;
+    else
+        max = vmi->max_physical_address;
+
+    g_rw_lock_reader_unlock(&vmi->lock);
+
+    return max;
 }
 
 unsigned int
 vmi_get_num_vcpus(
     vmi_instance_t vmi)
 {
-    return vmi->num_vcpus;
+    unsigned int vcpus;
+
+    g_rw_lock_reader_lock(&vmi->lock);
+    vcpus = vmi->num_vcpus;
+    g_rw_lock_reader_unlock(&vmi->lock);
+
+    return vcpus;
 }
 
 status_t
@@ -177,7 +226,13 @@ vmi_get_vcpureg(
     reg_t reg,
     unsigned long vcpu)
 {
-    return driver_get_vcpureg(vmi, value, reg, vcpu);
+    status_t ret;
+
+    g_rw_lock_reader_lock(&vmi->lock);
+    ret = driver_get_vcpureg(vmi, value, reg, vcpu);
+    g_rw_lock_reader_unlock(&vmi->lock);
+
+    return ret;
 }
 
 status_t
@@ -186,7 +241,13 @@ vmi_get_vcpuregs(
     registers_t *regs,
     unsigned long vcpu)
 {
-    return driver_get_vcpuregs(vmi, regs, vcpu);
+    status_t ret;
+
+    g_rw_lock_reader_lock(&vmi->lock);
+    ret = driver_get_vcpuregs(vmi, regs, vcpu);
+    g_rw_lock_reader_unlock(&vmi->lock);
+
+    return ret;
 }
 
 status_t
@@ -196,7 +257,13 @@ vmi_set_vcpureg(
     reg_t reg,
     unsigned long vcpu)
 {
-    return driver_set_vcpureg(vmi, value, reg, vcpu);
+    status_t ret;
+
+    g_rw_lock_writer_lock(&vmi->lock);
+    ret = driver_set_vcpureg(vmi, value, reg, vcpu);
+    g_rw_lock_writer_unlock(&vmi->lock);
+
+    return ret;
 }
 
 status_t
@@ -205,7 +272,13 @@ vmi_set_vcpuregs(
     registers_t *regs,
     unsigned long vcpu)
 {
-    return driver_set_vcpuregs(vmi, regs, vcpu);
+    status_t ret;
+
+    g_rw_lock_writer_lock(&vmi->lock);
+    ret = driver_set_vcpuregs(vmi, regs, vcpu);
+    g_rw_lock_writer_unlock(&vmi->lock);
+
+    return ret;
 }
 
 status_t
@@ -219,7 +292,13 @@ status_t
 vmi_resume_vm(
     vmi_instance_t vmi)
 {
-    return driver_resume_vm(vmi);
+    status_t ret;
+
+    g_rw_lock_writer_lock(&vmi->lock);
+    ret = driver_resume_vm(vmi);
+    g_rw_lock_writer_unlock(&vmi->lock);
+
+    return ret;
 }
 
 char *
@@ -230,9 +309,7 @@ vmi_get_name(
     char *name = NULL;
 
     if (VMI_FAILURE == driver_get_name(vmi, &name)) {
-        return NULL;
-    } else {
-        return name;
+        name = NULL;
     }
 }
 

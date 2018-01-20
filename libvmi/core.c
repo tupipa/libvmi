@@ -420,15 +420,18 @@ vmi_get_page_mode(
     if ( !vmi )
         return pm;
 
-    if ( VMI_FILE == vmi->mode )
-        return vmi->page_mode;
+    g_rw_lock_writer_lock(&vmi->lock);
 
-    if (VMI_SUCCESS == find_page_mode_live(vmi, vcpu, &pm) ) {
+    if ( VMI_FILE == vmi->mode )
+        pm = vmi->page_mode;
+    else if (VMI_SUCCESS == find_page_mode_live(vmi, vcpu, &pm) ) {
         if ( vcpu == 0 && vmi->page_mode != pm )
             dbprint(VMI_DEBUG_CORE,
                     "The page-mode we just identified doesn't match what LibVMI previously recorded! "
                     "You should re-run vmi_init_paging.\n");
     }
+
+    g_rw_lock_reader_lock(&vmi->lock);
 
     return pm;
 }
@@ -442,7 +445,10 @@ vmi_get_access_mode(
     vmi_mode_t *mode)
 {
     if ( vmi ) {
+        g_rw_lock_reader_lock(&vmi->lock);
         *mode = vmi->mode;
+        g_rw_lock_reader_unlock(&vmi->lock);
+
         return VMI_SUCCESS;
     }
 
@@ -513,6 +519,8 @@ status_t vmi_init(
     dbprint(VMI_DEBUG_CORE, "LibVMI Driver Mode %d\n", _vmi->mode);
 
     _vmi->init_flags = init_flags;
+
+    g_rw_lock_init(&_vmi->lock);
 
     /* driver-specific initilization */
     if (VMI_FAILURE == driver_init(_vmi, init_flags, init_data)) {
@@ -605,6 +613,8 @@ page_mode_t vmi_init_paging(
 
     vmi->page_mode = VMI_PM_UNKNOWN;
 
+    g_rw_lock_writer_lock(&vmi->lock);
+
     if ( VMI_FAILURE == arch_init(vmi) )
         return VMI_PM_UNKNOWN;
 
@@ -621,6 +631,8 @@ page_mode_t vmi_init_paging(
         };
     }
 
+    g_rw_lock_writer_unlock(&vmi->lock);
+
     return vmi->page_mode;
 }
 
@@ -630,8 +642,13 @@ os_t vmi_init_os(
     void *config,
     vmi_init_error_t *error)
 {
+    if ( !vmi )
+        return VMI_OS_UNKNOWN;
+
     vmi->os_type = VMI_OS_UNKNOWN;
     GHashTable *_config = NULL;
+
+    g_rw_lock_writer_lock(&vmi->lock);
 
     switch (config_mode) {
         case VMI_CONFIG_STRING:
@@ -727,6 +744,7 @@ os_t vmi_init_os(
     };
 
 error_exit:
+    g_rw_lock_writer_unlock(&vmi->lock);
     return vmi->os_type;
 }
 
@@ -778,6 +796,8 @@ vmi_destroy(
     if (!vmi)
         return VMI_FAILURE;
 
+    g_rw_lock_writer_lock(&vmi->lock);
+
     vmi->shutting_down = TRUE;
     driver_destroy(vmi);
     events_destroy(vmi);
@@ -803,6 +823,9 @@ vmi_destroy(
     memory_cache_destroy(vmi);
     if (vmi->image_type)
         free(vmi->image_type);
+
+    g_rw_lock_writer_unlock(&vmi->lock);
+    g_rw_lock_clear(&vmi->lock);
     free(vmi);
     return VMI_SUCCESS;
 }
